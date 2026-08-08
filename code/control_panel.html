@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RECON-01 // CONTROL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0e0f;
+    --panel: #15181a;
+    --panel-line: #262b2e;
+    --accent: #e8871e;
+    --accent-dim: #6b4a1e;
+    --danger: #d64545;
+    --steel: #5b6570;
+    --text: #e8e6e0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Oswald', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    padding: 18px;
+    background-image:
+      linear-gradient(var(--panel-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--panel-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    min-height: 100vh;
+  }
+
+  .frame {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  /* ---------- status bar ---------- */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    padding: 10px 18px;
+    margin-bottom: 14px;
+  }
+
+  .callsign {
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .callsign span { color: var(--accent); }
+
+  .link-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--steel);
+  }
+
+  .led {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 6px var(--danger);
+  }
+  .led.online {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  /* ---------- main grid ---------- */
+  .main {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 640px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    padding: 12px;
+  }
+
+  .panel-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin: 0 0 10px 0;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ---------- video / HUD reticle ---------- */
+  .video-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    overflow: hidden;
+    border: 1px solid var(--panel-line);
+  }
+  .video-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: contrast(1.05) saturate(0.9);
+    transform: scaleY(-1);
+  }
+  .video-wrap .fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--steel);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .corner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--accent-dim);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .online .corner {
+    border-color: var(--accent);
+    box-shadow: 0 0 6px rgba(232,135,30,0.5);
+  }
+  .corner.tl { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+  .corner.tr { top: 6px; right: 6px; border-left: none; border-bottom: none; }
+  .corner.bl { bottom: 6px; left: 6px; border-right: none; border-top: none; }
+  .corner.br { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+
+  .scanline {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(232,135,30,0.6), transparent);
+    top: 0;
+    opacity: 0;
+  }
+  .online .scanline {
+    opacity: 1;
+    animation: scan 3.2s linear infinite;
+  }
+  @keyframes scan {
+    0%   { top: 2%; }
+    50%  { top: 96%; }
+    100% { top: 2%; }
+  }
+
+  /* ---------- motor throttles ---------- */
+  .motors {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .motor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .motor-name {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .motor-name small { display: block; color: var(--steel); font-size: 10px; letter-spacing: 1px; margin-top: 2px;}
+
+  .readout {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    min-width: 64px;
+    text-align: center;
+  }
+  .readout.zero { color: var(--steel); }
+
+  .dir-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--steel);
+    text-transform: uppercase;
+  }
+
+  .slider-track {
+    position: relative;
+    height: 220px;
+    width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  input[type=range].vert {
+    width: 200px;
+    height: 34px;
+    transform: rotate(-90deg);
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    margin: 0;
+  }
+
+  input[type=range].vert::-webkit-slider-runnable-track {
+    height: 6px;
+    background: linear-gradient(90deg, var(--danger) 0%, var(--panel-line) 48%, var(--panel-line) 52%, var(--accent) 100%);
+    border: 1px solid var(--panel-line);
+  }
+  input[type=range].vert::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 26px;
+    height: 26px;
+    margin-top: -11px;
+    background: var(--text);
+    border: 2px solid var(--accent);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    cursor: grab;
+  }
+  input[type=range].vert::-moz-range-track {
+    height: 6px;
+    background: linear-gradient(90deg, var(--danger) 0%, var(--panel-line) 48%, var(--panel-line) 52%, var(--accent) 100%);
+    border: 1px solid var(--panel-line);
+  }
+  input[type=range].vert::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    background: var(--text);
+    border: 2px solid var(--accent);
+    border-radius: 0;
+    cursor: grab;
+  }
+
+  .zero-btn {
+    background: none;
+    border: 1px solid var(--panel-line);
+    color: var(--steel);
+    font-family: 'Oswald', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  .zero-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .link-btn {
+    background: none;
+    border: 1px solid var(--panel-line);
+    color: var(--steel);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .link-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,135,30,0.12);
+  }
+
+  /* ---------- stop bar ---------- */
+  .stop-bar {
+    margin-top: 14px;
+    width: 100%;
+    padding: 16px;
+    background: var(--danger);
+    border: none;
+    color: #1a0d0d;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+  }
+  .stop-bar:hover { background: #e85d5d; }
+  .stop-bar:active { transform: scale(0.995); }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <div class="statusbar">
+    <div class="callsign">RECON<span>-01</span> // CTRL</div>
+    <div class="link-status">
+      <div class="led" id="led"></div>
+      <span id="linkText">OFFLINE</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="panel">
+      <div class="panel-label"><span>OPTICAL FEED</span><span id="feedTag">NO SIGNAL</span></div>
+      <div class="video-wrap" id="videoWrap">
+        <img id="feed" src="" alt="">
+        <div class="fallback" id="fallback">AWAITING VIDEO LINK<br>SET DEVICE IP BELOW</div>
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        <div class="scanline"></div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+        <span style="font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--steel); letter-spacing:1px;">DEVICE IP</span>
+        <input id="ipInput" type="text" value="DEVICE_IP" spellcheck="false"
+          style="flex:1; background:#0c0e0f; border:1px solid var(--panel-line); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:13px; padding:6px 8px;">
+        <button class="zero-btn" onclick="applyIP()">SET</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">
+        <span>MOTOR THROTTLE</span>
+        <button class="link-btn" id="linkBtn" onclick="toggleLink()">LINK: OFF</button>
+      </div>
+      <div class="motors">
+
+        <div class="motor">
+          <div class="motor-name">MOTOR A<small>PORT</small></div>
+          <div class="readout zero" id="valA">0</div>
+          <div class="dir-tag" id="dirA">IDLE</div>
+          <div class="slider-track">
+            <input type="range" class="vert" id="sliderA" min="-255" max="255" value="0">
+          </div>
+          <button class="zero-btn" onclick="zero('A')">ZERO</button>
+        </div>
+
+        <div class="motor">
+          <div class="motor-name">MOTOR B<small>STARBOARD</small></div>
+          <div class="readout zero" id="valB">0</div>
+          <div class="dir-tag" id="dirB">IDLE</div>
+          <div class="slider-track">
+            <input type="range" class="vert" id="sliderB" min="-255" max="255" value="0">
+          </div>
+          <button class="zero-btn" onclick="zero('B')">ZERO</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <button class="stop-bar" onclick="emergencyStop()">EMERGENCY STOP</button>
+
+</div>
+
+<script>
+  let ws = null;
+  let espIP = document.getElementById('ipInput').value.trim();
+  let lastSent = { A: null, B: null };
+  let sendTimer = null;
+
+  const led = document.getElementById('led');
+  const linkText = document.getElementById('linkText');
+  const videoWrap = document.getElementById('videoWrap');
+  const feed = document.getElementById('feed');
+  const fallback = document.getElementById('fallback');
+  const feedTag = document.getElementById('feedTag');
+
+  function setOnline(isOnline) {
+    led.classList.toggle('online', isOnline);
+    linkText.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
+    videoWrap.classList.toggle('online', isOnline);
+  }
+
+  function connect() {
+    if (!espIP) return;
+    try { ws && ws.close(); } catch(e) {}
+    ws = new WebSocket('ws://' + espIP + ':81/');
+
+    ws.onopen = () => setOnline(true);
+    ws.onclose = () => {
+      setOnline(false);
+      setTimeout(connect, 1500);
+    };
+    ws.onerror = () => {};
+    ws.onmessage = (msg) => console.log('ESP32:', msg.data);
+  }
+
+  function applyIP() {
+    espIP = document.getElementById('ipInput').value.trim();
+    feed.src = 'http://' + espIP + '/stream';
+    connect();
+  }
+
+  feed.onload = () => { fallback.style.display = 'none'; feedTag.textContent = 'LIVE'; };
+  feed.onerror = () => { fallback.style.display = 'flex'; feedTag.textContent = 'NO SIGNAL'; };
+
+  function sendCmd(cmd) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(cmd);
+  }
+
+  function updateMotorUI(letter, val) {
+    const readout = document.getElementById('val' + letter);
+    const dirTag = document.getElementById('dir' + letter);
+    readout.textContent = val;
+    readout.classList.toggle('zero', val == 0);
+    dirTag.textContent = val > 0 ? 'FORWARD' : (val < 0 ? 'REVERSE' : 'IDLE');
+  }
+
+  let isLinked = false;
+
+  function toggleLink() {
+    isLinked = !isLinked;
+    const btn = document.getElementById('linkBtn');
+    btn.textContent = 'LINK: ' + (isLinked ? 'ON' : 'OFF');
+    btn.classList.toggle('active', isLinked);
+
+    if (isLinked) {
+      // sync B to match A the moment linking is turned on
+      const valA = parseInt(document.getElementById('sliderA').value, 10);
+      document.getElementById('sliderB').value = valA;
+      updateMotorUI('B', valA);
+      sendCmd('B:' + valA);
+    }
+  }
+
+  function wireMotor(letter) {
+    const other = letter === 'A' ? 'B' : 'A';
+    const slider = document.getElementById('slider' + letter);
+    slider.addEventListener('input', () => {
+      const val = parseInt(slider.value, 10);
+      updateMotorUI(letter, val);
+      clearTimeout(sendTimer);
+
+      if (isLinked) {
+        document.getElementById('slider' + other).value = val;
+        updateMotorUI(other, val);
+        sendTimer = setTimeout(() => {
+          sendCmd(letter + ':' + val);
+          sendCmd(other + ':' + val);
+        }, 40);
+        return;
+      }
+
+      if (lastSent[letter] === val) return;
+      lastSent[letter] = val;
+      sendTimer = setTimeout(() => sendCmd(letter + ':' + val), 40);
+    });
+  }
+  wireMotor('A');
+  wireMotor('B');
+
+  function zero(letter) {
+    document.getElementById('slider' + letter).value = 0;
+    updateMotorUI(letter, 0);
+    sendCmd(letter + ':0');
+    if (isLinked) {
+      const other = letter === 'A' ? 'B' : 'A';
+      document.getElementById('slider' + other).value = 0;
+      updateMotorUI(other, 0);
+      sendCmd(other + ':0');
+    }
+  }
+
+  function emergencyStop() {
+    document.getElementById('sliderA').value = 0;
+    document.getElementById('sliderB').value = 0;
+    updateMotorUI('A', 0);
+    updateMotorUI('B', 0);
+    sendCmd('STOP');
+  }
+
+  applyIP();
+</script>
+</body>
+</html>
